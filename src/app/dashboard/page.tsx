@@ -116,6 +116,7 @@ export default function DashboardPage() {
       // Auto-create inspections from extracted times
       if (data.inspection_times && data.inspection_times.length > 0 && userId) {
         const supabase = createClient();
+        let created = 0;
         for (const time of data.inspection_times) {
           const datetime = parseSuggestedDatetime(time);
           if (datetime && datetime > new Date()) {
@@ -127,7 +128,11 @@ export default function DashboardPage() {
                 ? `Open home ${time.start_time} - ${time.end_time}`
                 : "Open home",
             });
+            created++;
           }
+        }
+        if (created > 0) {
+          refreshInspections();
         }
       }
 

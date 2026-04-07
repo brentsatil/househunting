@@ -172,9 +172,12 @@ export function InspectionCalendar({
     }
   }
 
-  const handleToggleAttendance = useCallback(() => {
-    onRefresh?.();
-  }, [onRefresh]);
+  const handleToggleAttendance = useCallback(
+    (_inspectionId: string, _userId: string, _attending: boolean) => {
+      onRefresh?.();
+    },
+    [onRefresh]
+  );
 
   if (loading) {
     return (

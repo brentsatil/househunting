@@ -10,7 +10,6 @@ import {
   ChevronDown,
   ChevronUp,
   Pencil,
-  Download,
   Sparkles,
   Check,
 } from "lucide-react";
@@ -18,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AddToCalendarButton } from "./AddToCalendarButton";
 import { createClient } from "@/lib/supabase/client";
 import type { Inspection } from "@/types/property";
 
@@ -33,6 +33,9 @@ interface InspectionTrackerProps {
   partnerId?: string | null;
   partnerName?: string;
   address?: string;
+  suburb?: string;
+  state?: string;
+  postcode?: string;
   /** Inspection times extracted from the listing */
   suggestedTimes?: SuggestedInspection[];
 }
@@ -43,6 +46,9 @@ export function InspectionTracker({
   partnerId,
   partnerName = "Partner",
   address,
+  suburb = "",
+  state = "",
+  postcode = "",
   suggestedTimes,
 }: InspectionTrackerProps) {
   const supabase = createClient();
@@ -159,6 +165,8 @@ export function InspectionTracker({
   const past = inspections.filter((i) => new Date(i.datetime) < now);
   const nextInspection = upcoming[0];
 
+  const propertyInfo = { address: address || "", suburb, state, postcode };
+
   // Filter suggestions: remove already-booked and dismissed
   const activeSuggestions = (suggestedTimes || []).filter((s) => {
     if (dismissedSuggestions.has(suggestionKey(s))) return false;
@@ -176,19 +184,18 @@ export function InspectionTracker({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">Inspections</CardTitle>
           <div className="flex items-center gap-1.5">
-            {upcoming.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 rounded-lg text-xs gap-1"
-                onClick={() => {
-                  window.location.href = `/api/calendar?inspectionId=${nextInspection.id}`;
+            {upcoming.length > 0 && nextInspection && (
+              <AddToCalendarButton
+                property={{
+                  address: address || "",
+                  suburb,
+                  state,
+                  postcode,
                 }}
-                title="Add to calendar"
-              >
-                <Download className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Add to Cal</span>
-              </Button>
+                datetime={new Date(nextInspection.datetime)}
+                inspectionId={nextInspection.id}
+                notes={nextInspection.notes}
+              />
             )}
             <Button
               size="sm"
@@ -336,6 +343,7 @@ export function InspectionTracker({
             partnerName={partnerName}
             onToggle={toggleAttendance}
             onUpdateNotes={updateNotes}
+            propertyInfo={propertyInfo}
             isNext
           />
         )}
@@ -355,6 +363,7 @@ export function InspectionTracker({
                 partnerName={partnerName}
                 onToggle={toggleAttendance}
                 onUpdateNotes={updateNotes}
+                propertyInfo={propertyInfo}
               />
             ))}
           </div>
@@ -442,6 +451,7 @@ function InspectionCard({
   onToggle,
   onUpdateNotes,
   isNext,
+  propertyInfo,
 }: {
   inspection: Inspection;
   userId: string;
@@ -454,6 +464,7 @@ function InspectionCard({
     val: string
   ) => void;
   isNext?: boolean;
+  propertyInfo: { address: string; suburb: string; state: string; postcode: string };
 }) {
   const dt = new Date(inspection.datetime);
   const isAttending = inspection.attendees.includes(userId);
@@ -498,17 +509,13 @@ function InspectionCard({
               Next
             </span>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0"
-            onClick={() => {
-              window.location.href = `/api/calendar?inspectionId=${inspection.id}`;
-            }}
-            title="Add to calendar"
-          >
-            <Download className="h-3.5 w-3.5 text-muted-foreground" />
-          </Button>
+          <AddToCalendarButton
+            property={propertyInfo}
+            datetime={dt}
+            inspectionId={inspection.id}
+            notes={inspection.notes}
+            compact
+          />
         </div>
       </div>
 

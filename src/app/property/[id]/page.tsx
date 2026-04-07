@@ -16,8 +16,6 @@ import { ZoningInfo } from "@/components/enrichment/ZoningInfo";
 import { usePartnership } from "@/hooks/usePartnership";
 import { useProperties } from "@/hooks/useProperties";
 import { useRealtimeComments } from "@/hooks/useRealtimeComments";
-import { createClient } from "@/lib/supabase/client";
-import type { ExtractedProperty } from "@/types/property";
 
 export default function PropertyDetailPage() {
   const params = useParams();
@@ -29,11 +27,6 @@ export default function PropertyDetailPage() {
     useProperties(partnership?.id ?? null);
   const { comments, addComment } = useRealtimeComments(propertyId);
 
-  // Try to recover extracted inspection times for this property
-  const [suggestedTimes, setSuggestedTimes] = useState<
-    ExtractedProperty["inspection_times"]
-  >(undefined);
-
   const property = properties.find((p) => p.id === propertyId);
   const propertyInteractions = interactions[propertyId] || [];
   const partnerId =
@@ -42,47 +35,6 @@ export default function PropertyDetailPage() {
         ? partnership.user2_id
         : partnership.user1_id
       : null;
-
-  // Re-extract inspection times from the source URL if available
-  const fetchSuggestedTimes = useCallback(async () => {
-    if (!property?.source_url) return;
-    try {
-      // Check if we have cached extraction data for this property
-      const supabase = createClient();
-      const { data: inspections } = await supabase
-        .from("inspections")
-        .select("id")
-        .eq("property_id", propertyId);
-
-      // Only fetch suggestions if no inspections exist yet
-      if (inspections && inspections.length > 0) return;
-
-      const response = await fetch("/api/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: property.source_url }),
-      });
-      const result = await response.json();
-      if (
-        result.success &&
-        result.data?.inspection_times?.length > 0
-      ) {
-        setSuggestedTimes(result.data.inspection_times);
-      } else if (
-        result.partial?.inspection_times?.length > 0
-      ) {
-        setSuggestedTimes(result.partial.inspection_times);
-      }
-    } catch {
-      // Silently fail — suggestions are a nice-to-have
-    }
-  }, [property?.source_url, propertyId]);
-
-  useEffect(() => {
-    if (property?.source_url) {
-      fetchSuggestedTimes();
-    }
-  }, [property?.source_url, fetchSuggestedTimes]);
 
   if (!property || !mode || !userId) {
     return (
@@ -173,7 +125,9 @@ export default function PropertyDetailPage() {
               partnerId={partnerId}
               partnerName={partnerName}
               address={property.address}
-              suggestedTimes={suggestedTimes}
+              suburb={property.suburb}
+              state={property.state}
+              postcode={property.postcode}
             />
           </TabsContent>
           <TabsContent value="discuss" className="mt-4">

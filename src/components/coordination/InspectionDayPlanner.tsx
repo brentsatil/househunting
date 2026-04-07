@@ -7,7 +7,6 @@ import {
   MapPin,
   AlertTriangle,
   Car,
-  Users,
   UserCheck,
   UserX,
   ArrowDown,
@@ -20,6 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AddToCalendarButton } from "./AddToCalendarButton";
 import { createClient } from "@/lib/supabase/client";
 import type { InspectionWithProperty } from "@/hooks/useInspections";
 import { estimateTravel } from "@/services/travel";
@@ -210,8 +210,6 @@ export function InspectionDayPlanner({
             size="sm"
             className="h-8 text-xs gap-1 rounded-lg"
             onClick={() => {
-              // Build ICS for this day's inspections
-              const ids = inspections.map((i) => i.id).join(",");
               window.location.href = `/api/calendar?partnershipId=${partnershipId}&date=${date.toISOString().split("T")[0]}`;
             }}
           >
