@@ -1,24 +1,36 @@
 import * as cheerio from "cheerio";
 import type { ExtractedProperty, AustralianState } from "@/types/property";
 
-async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
-  const headers = {
-    "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-AU,en;q=0.9",
-  };
+const USER_AGENTS = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15",
+];
 
+async function fetchWithRetry(url: string, retries = 4): Promise<Response> {
   for (let attempt = 0; attempt <= retries; attempt++) {
+    const headers = {
+      "User-Agent": USER_AGENTS[attempt % USER_AGENTS.length],
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-AU,en;q=0.9",
+      "Cache-Control": "no-cache",
+    };
+
     const response = await fetch(url, { headers });
     if (response.ok) return response;
     if (response.status === 429 && attempt < retries) {
-      // Exponential backoff: 2s, 4s
-      await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+      // Exponential backoff: 3s, 6s, 12s, 24s
+      const delay = 3000 * Math.pow(2, attempt);
+      await new Promise((r) => setTimeout(r, delay));
       continue;
     }
     if (response.status === 429) {
-      throw new Error("REA is rate-limiting requests. Try again in a moment, or the listing will be partially extracted.");
+      throw new Error(
+        "REA is rate-limiting requests. Try again in a moment, or the listing will be partially extracted."
+      );
     }
     throw new Error(`Failed to fetch REA listing: ${response.status}`);
   }
