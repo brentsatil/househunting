@@ -1,9 +1,9 @@
 "use client";
 
-import { LayoutGrid, Map, List } from "lucide-react";
+import { LayoutGrid, Map, List, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type ViewMode = "grid" | "list" | "map";
+export type ViewMode = "grid" | "list" | "map" | "calendar";
 
 interface ViewToggleProps {
   view: ViewMode;
@@ -14,6 +14,7 @@ export function ViewToggle({ view, onChange }: ViewToggleProps) {
   const views: { value: ViewMode; icon: React.ReactNode; label: string }[] = [
     { value: "grid", icon: <LayoutGrid className="h-4 w-4" />, label: "Grid" },
     { value: "list", icon: <List className="h-4 w-4" />, label: "List" },
+    { value: "calendar", icon: <CalendarDays className="h-4 w-4" />, label: "Calendar" },
     { value: "map", icon: <Map className="h-4 w-4" />, label: "Map" },
   ];
 
