@@ -251,21 +251,61 @@ export function parseREAHtml(
  * Parse REA's ArgonautExchange data.
  *
  * ArgonautExchange is a nested JSON structure that contains all listing data.
- * The data is keyed by entity IDs and needs to be traversed to find listing info.
- * We search recursively for objects that look like listing data.
+ * The known path is:
+ *   ArgonautExchange["resi-property_listing-experience-web"]["urqlClientCache"]
+ *   → first entry → data → listing object
+ *
+ * Values are often double-stringified (JSON inside JSON), so we decode
+ * multiple layers. If the known path fails, we walk the entire tree.
  */
 function parseArgonautExchange(
   json: Record<string, unknown>,
   data: ExtractedProperty
 ) {
   try {
-    // ArgonautExchange is a flat key-value store where values can be:
-    // - Strings (sometimes JSON-encoded)
-    // - Objects with listing-like fields
-    // Walk all values looking for listing data patterns
-    walkForListingData(json, data, 0);
+    // Try the known REA path first
+    const resiKey = Object.keys(json).find(
+      (k) => k.includes("resi-property") || k.includes("listing-experience")
+    );
+    if (resiKey && typeof json[resiKey] === "object") {
+      const resi = json[resiKey] as Record<string, unknown>;
+      const cacheKey = Object.keys(resi).find(
+        (k) => k.includes("urqlClient") || k.includes("Cache") || k.includes("cache")
+      );
+      if (cacheKey && typeof resi[cacheKey] === "object") {
+        const cache = resi[cacheKey] as Record<string, unknown>;
+        // Cache entries are keyed by query hashes — iterate all values
+        for (const val of Object.values(cache)) {
+          let entry = val;
+          // Decode stringified JSON
+          if (typeof entry === "string") {
+            try { entry = JSON.parse(entry); } catch { continue; }
+          }
+          if (typeof entry === "object" && entry !== null) {
+            const entryObj = entry as Record<string, unknown>;
+            let dataObj = entryObj.data ?? entryObj;
+            if (typeof dataObj === "string") {
+              try { dataObj = JSON.parse(dataObj); } catch { /* skip */ }
+            }
+            if (typeof dataObj === "object" && dataObj !== null) {
+              walkForListingData(dataObj, data, 0);
+            }
+          }
+        }
+      }
+    }
+
+    // Fallback: walk the entire tree looking for listing data
+    if (!data.address && !data.bedrooms) {
+      walkForListingData(json, data, 0);
+    }
   } catch {
-    // Structure doesn't match
+    // Structure doesn't match — try full walk
+    try {
+      walkForListingData(json, data, 0);
+    } catch {
+      // Give up
+    }
   }
 }
 
