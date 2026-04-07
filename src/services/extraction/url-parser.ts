@@ -156,60 +156,96 @@ export function parseREAUrl(url: string): Partial<ExtractedProperty> {
 }
 
 /**
- * Parse Domain URLs.
- * Format: /123-main-street-fitzroy-vic-3065-12345678
- * Also:   /rent/123-main-street-fitzroy-vic-3065-12345678
+ * Parse Domain URLs. Handles many variations:
+ *
+ * Standard listing:
+ *   /123-main-street-fitzroy-vic-3065-2019874321
+ *   /1-2-smith-road-south-yarra-vic-3141-2019874321
+ *
+ * Rental listings:
+ *   /rent/123-main-street-fitzroy-vic-3065-2019874321
+ *
+ * Property profile:
+ *   /property-profile/123-main-street-fitzroy-vic-3065
+ *
+ * Listing detail paths:
+ *   /sale/123-main-street-fitzroy-vic-3065
+ *   /auction-results/123-main-street-fitzroy-vic-3065
+ *
+ * New-style paths:
+ *   /{suburb}-{state}-{postcode}/123-main-street-{id}
  */
 export function parseDomainUrl(url: string): Partial<ExtractedProperty> {
   const data: Partial<ExtractedProperty> = {};
-  const pathname = decodeURIComponent(new URL(url).pathname);
+  const parsed = new URL(url);
+  const pathname = decodeURIComponent(parsed.pathname);
 
-  // Extract listing ID
-  const idMatch = pathname.match(/(\d{7,})$/);
+  // Extract listing ID (long numeric string)
+  const idMatch = pathname.match(/(\d{7,})/);
   if (idMatch) data.external_id = idMatch[1];
-
-  // Match state + postcode pattern
-  const fullMatch = pathname.match(
-    /\/(?:rent\/|buy\/)?(.+?)-(nsw|vic|qld|wa|sa|tas|act|nt)-(\d{4})(?:-\d+)?$/i
-  );
-
-  if (fullMatch) {
-    const addressAndSuburb = fullMatch[1];
-    data.state = fullMatch[2].toUpperCase() as AustralianState;
-    data.postcode = fullMatch[3];
-
-    const parts = addressAndSuburb.split("-");
-    if (parts.length >= 3) {
-      let streetTypeIdx = -1;
-      for (let i = parts.length - 1; i >= 0; i--) {
-        if (STREET_TYPES.test(parts[i])) {
-          streetTypeIdx = i;
-          break;
-        }
-      }
-
-      if (streetTypeIdx >= 0 && streetTypeIdx < parts.length - 1) {
-        data.address = toTitleCase(
-          parts.slice(0, streetTypeIdx + 1).join(" ")
-        );
-        data.suburb = toTitleCase(
-          parts.slice(streetTypeIdx + 1).join(" ")
-        );
-      } else {
-        const suburbWordCount = parts.length > 4 ? 2 : 1;
-        data.suburb = toTitleCase(
-          parts.slice(-suburbWordCount).join(" ")
-        );
-        data.address = toTitleCase(
-          parts.slice(0, -suburbWordCount).join(" ")
-        );
-      }
-    }
-  }
 
   // Detect rental
   if (pathname.includes("/rent/") || pathname.includes("/rental")) {
     data._is_rental = true;
+  }
+
+  // Strategy 1: Find state + postcode pattern anywhere in the URL path
+  // This is the most reliable signal — works across all Domain URL formats
+  const statePostcodeMatch = pathname.match(
+    /-(nsw|vic|qld|wa|sa|tas|act|nt)-(\d{4})(?:[-/]|$)/i
+  );
+
+  if (statePostcodeMatch) {
+    data.state = statePostcodeMatch[1].toUpperCase() as AustralianState;
+    data.postcode = statePostcodeMatch[2];
+
+    // Extract the address+suburb portion (everything before state-postcode)
+    const beforeState = pathname
+      .slice(0, statePostcodeMatch.index)
+      .replace(/^\/(?:rent|sale|buy|property-profile|auction-results)\//, "/")
+      .replace(/^\//, "");
+
+    if (beforeState) {
+      const parts = beforeState.split("-").filter(Boolean);
+
+      if (parts.length >= 2) {
+        // Find street type to split address from suburb
+        let streetTypeIdx = -1;
+        for (let i = parts.length - 1; i >= 0; i--) {
+          if (STREET_TYPES.test(parts[i])) {
+            streetTypeIdx = i;
+            break;
+          }
+        }
+
+        if (streetTypeIdx >= 0 && streetTypeIdx < parts.length - 1) {
+          data.address = toTitleCase(
+            parts.slice(0, streetTypeIdx + 1).join(" ")
+          );
+          data.suburb = toTitleCase(
+            parts.slice(streetTypeIdx + 1).join(" ")
+          );
+        } else {
+          // Fallback: last 1-2 parts are suburb
+          const suburbWordCount = parts.length > 4 ? 2 : 1;
+          data.suburb = toTitleCase(
+            parts.slice(-suburbWordCount).join(" ")
+          );
+          data.address = toTitleCase(
+            parts.slice(0, -suburbWordCount).join(" ")
+          );
+        }
+      } else if (parts.length === 1) {
+        // Single word before state — probably suburb
+        data.suburb = toTitleCase(parts[0]);
+      }
+    }
+  }
+
+  // Strategy 2: Check query params (some Domain links use ?listing=xxx)
+  const listingParam = parsed.searchParams.get("listing");
+  if (listingParam && !data.external_id) {
+    data.external_id = listingParam;
   }
 
   return data;

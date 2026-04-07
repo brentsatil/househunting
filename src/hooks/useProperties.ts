@@ -87,6 +87,10 @@ export function useProperties(partnershipId: string | null) {
   }, [partnershipId, fetchProperties, supabase]);
 
   async function addProperty(property: Partial<Property>) {
+    if (!partnershipId) {
+      throw new Error("No partnership found. Please refresh the page.");
+    }
+
     const { data, error } = await supabase
       .from("properties")
       .insert({ ...property, partnership_id: partnershipId })

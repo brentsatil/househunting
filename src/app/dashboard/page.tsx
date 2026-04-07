@@ -60,14 +60,10 @@ export default function DashboardPage() {
         : partnership.user1_id
       : null;
 
+  // Always show preview so user can verify extracted data before saving.
+  // This also avoids stale closure issues with auto-confirm.
   const handleExtracted = useCallback((data: ExtractedProperty) => {
-    const hasRequired =
-      data.address && data.suburb && data.postcode && data.state;
-    if (hasRequired && !data.missing_fields?.length) {
-      handleConfirm(data);
-    } else {
-      setPendingExtraction(data);
-    }
+    setPendingExtraction(data);
   }, []);
 
   async function handleConfirm(data: ExtractedProperty) {
