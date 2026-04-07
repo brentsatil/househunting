@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AddToCalendarButton } from "./AddToCalendarButton";
+import { InspectionPrep } from "./InspectionPrep";
 import { createClient } from "@/lib/supabase/client";
 import type { Inspection } from "@/types/property";
 
@@ -336,16 +337,19 @@ export function InspectionTracker({
 
         {/* Next inspection — prominent */}
         {nextInspection && (
-          <InspectionCard
-            inspection={nextInspection}
-            userId={userId}
-            partnerId={partnerId}
-            partnerName={partnerName}
-            onToggle={toggleAttendance}
-            onUpdateNotes={updateNotes}
-            propertyInfo={propertyInfo}
-            isNext
-          />
+          <>
+            <InspectionCard
+              inspection={nextInspection}
+              userId={userId}
+              partnerId={partnerId}
+              partnerName={partnerName}
+              onToggle={toggleAttendance}
+              onUpdateNotes={updateNotes}
+              propertyInfo={propertyInfo}
+              isNext
+            />
+            <InspectionPrep propertyId={propertyId} />
+          </>
         )}
 
         {/* Other upcoming */}

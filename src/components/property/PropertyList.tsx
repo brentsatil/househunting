@@ -8,9 +8,19 @@ interface PropertyListProps {
   properties: Property[];
   interactions: Record<string, PropertyInteraction[]>;
   mode: SearchMode;
+  compareMode?: boolean;
+  compareIds?: string[];
+  onToggleCompare?: (id: string) => void;
 }
 
-export function PropertyList({ properties, interactions, mode }: PropertyListProps) {
+export function PropertyList({
+  properties,
+  interactions,
+  mode,
+  compareMode,
+  compareIds = [],
+  onToggleCompare,
+}: PropertyListProps) {
   if (properties.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -37,6 +47,9 @@ export function PropertyList({ properties, interactions, mode }: PropertyListPro
           property={property}
           interactions={interactions[property.id] || []}
           mode={mode}
+          compareMode={compareMode}
+          isSelected={compareIds.includes(property.id)}
+          onToggleCompare={onToggleCompare}
         />
       ))}
     </div>

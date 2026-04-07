@@ -8,9 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Header } from "@/components/layout/Header";
 import { PropertyDetail } from "@/components/property/PropertyDetail";
+import { RedFlagsBanner } from "@/components/property/RedFlagsBanner";
 import { CommentThread } from "@/components/coordination/CommentThread";
 import { InspectionTracker } from "@/components/coordination/InspectionTracker";
 import { PartnerRatings } from "@/components/coordination/PartnerRatings";
+import { AlignmentCard } from "@/components/coordination/AlignmentCard";
 import { SuburbInsights } from "@/components/enrichment/SuburbInsights";
 import { ZoningInfo } from "@/components/enrichment/ZoningInfo";
 import { usePartnership } from "@/hooks/usePartnership";
@@ -84,6 +86,15 @@ export default function PropertyDetailPage() {
           }}
         />
 
+        {/* Red flags */}
+        <RedFlagsBanner
+          propertyId={propertyId}
+          redFlags={property.ai_red_flags}
+          onGenerated={(data) => {
+            if (data) updateProperty(propertyId, { ai_red_flags: data });
+          }}
+        />
+
         {/* Tabbed sections */}
         <Tabs defaultValue="plan" className="w-full">
           <TabsList className="w-full grid grid-cols-4 h-12 rounded-xl bg-secondary p-1">
@@ -139,7 +150,7 @@ export default function PropertyDetailPage() {
               }
             />
           </TabsContent>
-          <TabsContent value="rate" className="mt-4">
+          <TabsContent value="rate" className="mt-4 space-y-0">
             <PartnerRatings
               interactions={propertyInteractions}
               currentUserId={userId}
@@ -150,6 +161,16 @@ export default function PropertyDetailPage() {
               }}
               user1Name="You"
               user2Name={partnerName}
+            />
+            <AlignmentCard
+              propertyId={propertyId}
+              alignment={property.ai_alignment}
+              bothRated={
+                propertyInteractions.filter((i) => i.rating !== null).length >= 2
+              }
+              onGenerated={(data) => {
+                updateProperty(propertyId, { ai_alignment: data });
+              }}
             />
           </TabsContent>
           <TabsContent value="area" className="mt-4 space-y-4">

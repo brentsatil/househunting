@@ -97,6 +97,22 @@ export interface Property {
 
   // AI-generated
   ai_summary: string | null;
+  ai_red_flags: {
+    flags: Array<{
+      severity: "info" | "warning" | "critical";
+      category: string;
+      title: string;
+      explanation: string;
+    }>;
+    overall_risk: "low" | "medium" | "high";
+  } | null;
+  ai_alignment: {
+    together_score: number;
+    agreements: string[];
+    disagreements: string[];
+    compromise_suggestions: string[];
+    verdict: string;
+  } | null;
 
   listed_date: string | null;
   is_active: boolean;

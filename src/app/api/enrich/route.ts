@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { enrichProperty } from "@/services/enrichment";
 import { summarizeProperty } from "@/services/ai/summarize";
+import { detectRedFlags } from "@/services/ai/red-flags";
 
 const enrichSchema = z.object({
   propertyId: z.string().uuid(),
@@ -70,6 +71,33 @@ export async function POST(request: Request) {
       } catch (aiError) {
         console.error("AI summarization failed:", aiError);
         // Non-fatal — enrichment data was still saved
+      }
+
+      // Red flag detection
+      try {
+        const redFlags = await detectRedFlags(property, {
+          id: "",
+          property_id: propertyId,
+          suburb_stats: enrichmentResult.suburb_stats as Record<string, unknown> | null,
+          council_zoning: enrichmentResult.council_zoning as Record<string, unknown> | null,
+          comparables: enrichmentResult.comparables as Array<{
+            address: string;
+            price: number;
+            bedrooms: number;
+            bathrooms: number;
+            property_type: string;
+            distance_km: number;
+          }> | null,
+          fetched_at: new Date().toISOString(),
+        });
+
+        await supabase
+          .from("properties")
+          .update({ ai_red_flags: redFlags })
+          .eq("id", propertyId);
+      } catch (redFlagError) {
+        console.error("Red flag detection failed:", redFlagError);
+        // Non-fatal
       }
     }
 
