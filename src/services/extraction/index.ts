@@ -286,6 +286,27 @@ export async function extractFromURL(url: string): Promise<ExtractionResult> {
     };
   }
 
+  // If we have suburb/state from the URL but no address and very thin data,
+  // the HTML was likely a JS shell — offer HTML paste for full extraction.
+  const isThinData =
+    !merged.bedrooms &&
+    !merged.bathrooms &&
+    !merged.rent_weekly &&
+    !merged.sale_price &&
+    !merged.price_guide &&
+    !merged.description &&
+    (!merged.images || merged.images.length === 0);
+
+  if (!merged.address && isThinData) {
+    return {
+      success: false,
+      error:
+        "The listing page returned limited data. Paste the page source for full details.",
+      partial: merged,
+      needs_html: true,
+    };
+  }
+
   return { success: true, data: merged, strategies };
 }
 

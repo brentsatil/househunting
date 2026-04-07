@@ -380,7 +380,7 @@ export function ExtractionPreview({
                 )}
                 {saving ? "Saving" : "Add"}
               </Button>
-              {edited.source_url && (
+              {edited.source_url && !isThinData && (
                 <a
                   href={edited.source_url}
                   target="_blank"
@@ -455,10 +455,7 @@ export function ExtractionPreview({
 
           {/* Thin data warning — offer HTML paste to get more */}
           {isThinData && onEnrichWithHtml && (
-            <button
-              onClick={onEnrichWithHtml}
-              className="w-full rounded-xl bg-amber-50 border border-amber-200 p-3 text-left hover:bg-amber-100/70 transition-colors group"
-            >
+            <div className="w-full rounded-xl bg-amber-50 border border-amber-200 p-3 space-y-2.5">
               <div className="flex items-center gap-2">
                 <Code2 className="h-4 w-4 text-amber-600 shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -466,14 +463,31 @@ export function ExtractionPreview({
                     Limited data extracted — get full listing details
                   </p>
                   <p className="text-[11px] text-amber-600/80 mt-0.5">
-                    Paste the page source to get images, price, bedrooms, description & more
+                    Open the listing, copy the page source, then paste it here
                   </p>
                 </div>
-                <span className="text-xs font-medium text-amber-700 group-hover:underline shrink-0">
-                  Paste HTML
-                </span>
               </div>
-            </button>
+              <div className="flex items-center gap-2">
+                {edited.source_url && (
+                  <a
+                    href={edited.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-white border border-amber-200 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100/50 transition-colors"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    1. Open listing
+                  </a>
+                )}
+                <button
+                  onClick={onEnrichWithHtml}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 transition-colors"
+                >
+                  <Code2 className="h-3 w-3" />
+                  2. Paste page source
+                </button>
+              </div>
+            </div>
           )}
 
           {/* Extracted inspection times */}
