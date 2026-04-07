@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Home, Star, CalendarCheck, TrendingUp } from "lucide-react";
+import { Home, Star, CalendarCheck, TrendingUp, Sparkles } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { ViewToggle, type ViewMode } from "@/components/layout/ViewToggle";
 import { AddPropertyBar } from "@/components/property/AddPropertyBar";
@@ -10,7 +10,9 @@ import { ExtractionPreview } from "@/components/property/ExtractionPreview";
 import { HtmlPasteDialog } from "@/components/property/HtmlPasteDialog";
 import { PropertyList } from "@/components/property/PropertyList";
 import { PropertyMap } from "@/components/property/PropertyMap";
+import { CompareView } from "@/components/property/CompareView";
 import { InspectionCalendar } from "@/components/coordination/InspectionCalendar";
+import { SearchDigest } from "@/components/dashboard/SearchDigest";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePartnership } from "@/hooks/usePartnership";
 import { useProperties } from "@/hooks/useProperties";
@@ -54,6 +56,8 @@ export default function DashboardPage() {
     useState<ExtractedProperty | null>(null);
   const [saving, setSaving] = useState(false);
   const [enrichDialog, setEnrichDialog] = useState(false);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
 
   const partnerId =
     partnership && userId
@@ -244,6 +248,15 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Search digest */}
+        {partnership && mode && (
+          <SearchDigest
+            partnershipId={partnership.id}
+            mode={mode}
+            propertyCount={totalProps}
+          />
+        )}
+
         {/* Add property bar */}
         <AddPropertyBar
           onExtracted={handleExtracted}
@@ -305,8 +318,40 @@ export default function DashboardPage() {
               </Select>
             )}
           </div>
-          <ViewToggle view={view} onChange={setView} />
+          <div className="flex items-center gap-2">
+            {view !== "calendar" && filteredProperties.length >= 2 && (
+              <button
+                onClick={() => {
+                  setCompareMode(!compareMode);
+                  setCompareIds([]);
+                }}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                  compareMode
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {compareMode ? `Select ${compareIds.length}/3` : "Compare"}
+              </button>
+            )}
+            <ViewToggle view={view} onChange={setView} />
+          </div>
         </div>
+
+        {/* Compare view */}
+        {compareMode && compareIds.length >= 2 && (
+          <CompareView
+            properties={filteredProperties.filter((p) =>
+              compareIds.includes(p.id)
+            )}
+            mode={mode}
+            onClose={() => {
+              setCompareMode(false);
+              setCompareIds([]);
+            }}
+          />
+        )}
 
         {/* View content */}
         {propertiesLoading ? (
@@ -335,6 +380,17 @@ export default function DashboardPage() {
             properties={filteredProperties}
             interactions={interactions}
             mode={mode}
+            compareMode={compareMode}
+            compareIds={compareIds}
+            onToggleCompare={(id) => {
+              setCompareIds((prev) =>
+                prev.includes(id)
+                  ? prev.filter((x) => x !== id)
+                  : prev.length < 3
+                    ? [...prev, id]
+                    : prev
+              );
+            }}
           />
         )}
 

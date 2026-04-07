@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Bed, Bath, Car, MapPin, Calendar, Ruler, Clock } from "lucide-react";
+import { Bed, Bath, Car, MapPin, Calendar, Ruler, Clock, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "./StatusBadge";
 import { RatingStars } from "./RatingStars";
@@ -13,9 +13,19 @@ interface PropertyCardProps {
   property: Property;
   interactions?: PropertyInteraction[];
   mode: SearchMode;
+  compareMode?: boolean;
+  isSelected?: boolean;
+  onToggleCompare?: (id: string) => void;
 }
 
-export function PropertyCard({ property, interactions = [], mode }: PropertyCardProps) {
+export function PropertyCard({
+  property,
+  interactions = [],
+  mode,
+  compareMode,
+  isSelected,
+  onToggleCompare,
+}: PropertyCardProps) {
   const leadImage = property.images?.[0];
   const priceDisplay = mode === "rent"
     ? property.rent_weekly ? `${formatAUD(property.rent_weekly)}/wk` : "Price TBA"
@@ -29,9 +39,10 @@ export function PropertyCard({ property, interactions = [], mode }: PropertyCard
     : user1Rating !== null ? user1Rating.toFixed(1)
       : user2Rating !== null ? user2Rating.toFixed(1) : null;
 
-  return (
-    <Link href={`/property/${property.id}`}>
-      <Card className="group overflow-hidden rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-card border-border/50">
+  const riskLevel = property.ai_red_flags?.overall_risk;
+
+  const cardContent = (
+      <Card className={`group overflow-hidden rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-card border-border/50 ${compareMode && isSelected ? "ring-2 ring-primary" : ""}`}>
         {/* Photo */}
         <div className="relative aspect-[3/2] overflow-hidden bg-muted">
           {leadImage ? (
@@ -47,9 +58,31 @@ export function PropertyCard({ property, interactions = [], mode }: PropertyCard
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-          <div className="absolute top-3 left-3">
+          <div className="absolute top-3 left-3 flex items-center gap-1.5">
             <StatusBadge status={property.status} />
+            {riskLevel && riskLevel !== "low" && (
+              <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold backdrop-blur-sm ${
+                riskLevel === "high"
+                  ? "bg-red-500/80 text-white"
+                  : "bg-amber-500/80 text-white"
+              }`}>
+                <ShieldAlert className="h-3 w-3" />
+                {riskLevel}
+              </span>
+            )}
           </div>
+
+          {compareMode && (
+            <div className="absolute top-3 right-3 z-10">
+              <div className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors ${
+                isSelected
+                  ? "bg-primary border-primary text-white"
+                  : "bg-white/80 border-white/60 backdrop-blur-sm"
+              }`}>
+                {isSelected && <CheckCircle2 className="h-4 w-4" />}
+              </div>
+            </div>
+          )}
 
           {combinedScore && (
             <div className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-black/50 backdrop-blur-sm px-2.5 py-1 text-white">
@@ -127,8 +160,20 @@ export function PropertyCard({ property, interactions = [], mode }: PropertyCard
           )}
         </div>
       </Card>
-    </Link>
   );
+
+  if (compareMode) {
+    return (
+      <button
+        onClick={() => onToggleCompare?.(property.id)}
+        className="text-left w-full"
+      >
+        {cardContent}
+      </button>
+    );
+  }
+
+  return <Link href={`/property/${property.id}`}>{cardContent}</Link>;
 }
 
 function StarIcon({ className }: { className?: string }) {
