@@ -255,7 +255,11 @@ export async function extractFromURL(url: string): Promise<ExtractionResult> {
   }
 
   // --- Step 4: AI extraction if quality is low ---
-  if (!hasMinimumQuality(merged) || qualityScore(merged) < 5) {
+  // Use AI extraction aggressively — it's the most reliable strategy when
+  // HTML parsing fails to find structured data (e.g. JS-rendered pages).
+  // Trigger when: missing address, OR missing most desired fields.
+  const preAiScore = qualityScore(merged);
+  if (!hasMinimumQuality(merged) || preAiScore < 8 || !merged.address) {
     try {
       const aiData = await aiExtractProperty(html, url, source);
       merged = mergeExtracted(merged, aiData);
@@ -281,27 +285,6 @@ export async function extractFromURL(url: string): Promise<ExtractionResult> {
       success: false,
       error:
         "The listing page didn't include readable data. Paste the page HTML from your browser for better results.",
-      partial: merged,
-      needs_html: true,
-    };
-  }
-
-  // If we have suburb/state from the URL but no address and very thin data,
-  // the HTML was likely a JS shell — offer HTML paste for full extraction.
-  const isThinData =
-    !merged.bedrooms &&
-    !merged.bathrooms &&
-    !merged.rent_weekly &&
-    !merged.sale_price &&
-    !merged.price_guide &&
-    !merged.description &&
-    (!merged.images || merged.images.length === 0);
-
-  if (!merged.address && isThinData) {
-    return {
-      success: false,
-      error:
-        "The listing page returned limited data. Paste the page source for full details.",
       partial: merged,
       needs_html: true,
     };
@@ -351,8 +334,8 @@ export async function extractFromHTML(
   merged = sourceSpecific;
   strategies.push(`${source}-parser`);
 
-  // AI extraction if needed
-  if (!hasMinimumQuality(merged) || qualityScore(merged) < 5) {
+  // AI extraction if needed — aggressive threshold
+  if (!hasMinimumQuality(merged) || qualityScore(merged) < 8 || !merged.address) {
     try {
       const aiData = await aiExtractProperty(html, url, source);
       merged = mergeExtracted(merged, aiData);
