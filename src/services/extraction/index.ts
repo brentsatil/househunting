@@ -265,12 +265,26 @@ export async function extractFromURL(url: string): Promise<ExtractionResult> {
     }
   }
 
-  // --- Step 5: Track missing fields ---
+  // --- Step 5: Quality gate ---
+  // If after all strategies we still have almost no data, the HTML
+  // was probably a JS shell. Offer HTML paste as fallback.
   const missing = ESSENTIAL_FIELDS.filter((f) => !merged[f]);
   if (missing.length > 0) merged.missing_fields = [...missing];
 
   // Clean up internal fields
   delete (merged as unknown as Record<string, unknown>)._is_rental;
+
+  const score = qualityScore(merged);
+  if (score < 3 && !hasMinimumQuality(merged)) {
+    // Extraction got almost nothing — site probably served a JS shell
+    return {
+      success: false,
+      error:
+        "The listing page didn't include readable data. Paste the page HTML from your browser for better results.",
+      partial: merged,
+      needs_html: true,
+    };
+  }
 
   return { success: true, data: merged, strategies };
 }
