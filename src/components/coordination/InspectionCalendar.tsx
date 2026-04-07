@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -13,9 +13,11 @@ import {
   UserX,
   Bed,
   Bath,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { InspectionDayPlanner } from "./InspectionDayPlanner";
 import type { InspectionWithProperty } from "@/hooks/useInspections";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +28,7 @@ interface InspectionCalendarProps {
   partnerName?: string;
   partnershipId: string;
   loading?: boolean;
+  onRefresh?: () => void;
 }
 
 export function InspectionCalendar({
@@ -35,11 +38,13 @@ export function InspectionCalendar({
   partnerName = "Partner",
   partnershipId,
   loading,
+  onRefresh,
 }: InspectionCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -51,7 +56,6 @@ export function InspectionCalendar({
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
 
-    // Start from Monday (1) — adjust if first day is Sunday (0)
     let startOffset = firstDay.getDay() - 1;
     if (startOffset < 0) startOffset = 6;
 
@@ -59,21 +63,21 @@ export function InspectionCalendar({
       date: Date;
       isCurrentMonth: boolean;
       isToday: boolean;
+      isSelected: boolean;
       inspections: InspectionWithProperty[];
     }> = [];
 
-    // Previous month padding
     for (let i = startOffset - 1; i >= 0; i--) {
       const date = new Date(year, month, -i);
       days.push({
         date,
         isCurrentMonth: false,
         isToday: false,
+        isSelected: false,
         inspections: [],
       });
     }
 
-    // Current month days
     for (let d = 1; d <= lastDay.getDate(); d++) {
       const date = new Date(year, month, d);
       const dayStr = date.toDateString();
@@ -81,13 +85,15 @@ export function InspectionCalendar({
         date,
         isCurrentMonth: true,
         isToday: date.toDateString() === today.toDateString(),
+        isSelected: selectedDate
+          ? date.toDateString() === selectedDate.toDateString()
+          : false,
         inspections: inspections.filter(
           (i) => new Date(i.datetime).toDateString() === dayStr
         ),
       });
     }
 
-    // Next month padding (fill to complete weeks)
     const remaining = 7 - (days.length % 7);
     if (remaining < 7) {
       for (let i = 1; i <= remaining; i++) {
@@ -96,13 +102,14 @@ export function InspectionCalendar({
           date,
           isCurrentMonth: false,
           isToday: false,
+          isSelected: false,
           inspections: [],
         });
       }
     }
 
     return days;
-  }, [currentMonth, inspections, today]);
+  }, [currentMonth, inspections, today, selectedDate]);
 
   // Upcoming inspections list
   const upcoming = useMemo(
@@ -116,28 +123,90 @@ export function InspectionCalendar({
     [inspections, today]
   );
 
+  // Inspections for selected day
+  const selectedDayInspections = useMemo(() => {
+    if (!selectedDate) return [];
+    const dayStr = selectedDate.toDateString();
+    return inspections
+      .filter((i) => new Date(i.datetime).toDateString() === dayStr)
+      .sort(
+        (a, b) =>
+          new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
+      );
+  }, [selectedDate, inspections]);
+
+  // Days that have inspections (for quick nav)
+  const inspectionDates = useMemo(() => {
+    const dates = new Set<string>();
+    inspections.forEach((i) =>
+      dates.add(new Date(i.datetime).toDateString())
+    );
+    return dates;
+  }, [inspections]);
+
   function prevMonth() {
     setCurrentMonth(
       (m) => new Date(m.getFullYear(), m.getMonth() - 1, 1)
     );
+    setSelectedDate(null);
   }
 
   function nextMonth() {
     setCurrentMonth(
       (m) => new Date(m.getFullYear(), m.getMonth() + 1, 1)
     );
+    setSelectedDate(null);
   }
 
   function goToToday() {
     const now = new Date();
     setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1));
+    setSelectedDate(null);
   }
+
+  function handleDayClick(date: Date, hasInspections: boolean) {
+    if (hasInspections) {
+      setSelectedDate(
+        selectedDate?.toDateString() === date.toDateString() ? null : date
+      );
+    }
+  }
+
+  const handleToggleAttendance = useCallback(() => {
+    onRefresh?.();
+  }, [onRefresh]);
 
   if (loading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 h-96 rounded-2xl bg-muted animate-pulse" />
         <div className="h-96 rounded-2xl bg-muted animate-pulse" />
+      </div>
+    );
+  }
+
+  // If a day is selected, show the day planner
+  if (selectedDate && selectedDayInspections.length > 0) {
+    return (
+      <div className="space-y-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setSelectedDate(null)}
+          className="gap-1.5 -ml-2 text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to calendar
+        </Button>
+
+        <InspectionDayPlanner
+          date={selectedDate}
+          inspections={selectedDayInspections}
+          userId={userId}
+          partnerId={partnerId}
+          partnerName={partnerName}
+          partnershipId={partnershipId}
+          onToggleAttendance={handleToggleAttendance}
+        />
       </div>
     );
   }
@@ -185,74 +254,90 @@ export function InspectionCalendar({
           </div>
         </CardHeader>
         <CardContent>
-          {/* Day headers */}
           <div className="grid grid-cols-7 mb-1">
-            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-              <div
-                key={day}
-                className="text-center text-[11px] font-medium text-muted-foreground py-1.5"
-              >
-                {day}
-              </div>
-            ))}
+            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+              (day) => (
+                <div
+                  key={day}
+                  className="text-center text-[11px] font-medium text-muted-foreground py-1.5"
+                >
+                  {day}
+                </div>
+              )
+            )}
           </div>
 
-          {/* Calendar grid */}
           <div className="grid grid-cols-7 border-t border-l">
-            {calendarDays.map((day, idx) => (
-              <div
-                key={idx}
-                className={cn(
-                  "border-r border-b min-h-[72px] p-1 transition-colors",
-                  !day.isCurrentMonth && "bg-muted/30",
-                  day.isToday && "bg-primary/[0.03]"
-                )}
-              >
-                <span
+            {calendarDays.map((day, idx) => {
+              const hasInsp = day.inspections.length > 0;
+              return (
+                <button
+                  key={idx}
+                  onClick={() =>
+                    day.isCurrentMonth &&
+                    handleDayClick(day.date, hasInsp)
+                  }
+                  disabled={!day.isCurrentMonth || !hasInsp}
                   className={cn(
-                    "inline-flex items-center justify-center h-6 w-6 rounded-full text-xs",
-                    day.isToday &&
-                      "bg-primary text-primary-foreground font-bold",
-                    !day.isCurrentMonth && "text-muted-foreground/50"
+                    "border-r border-b min-h-[72px] p-1 transition-colors text-left",
+                    !day.isCurrentMonth && "bg-muted/30",
+                    day.isToday && "bg-primary/[0.03]",
+                    day.isSelected && "bg-primary/10 ring-2 ring-primary/30",
+                    hasInsp &&
+                      day.isCurrentMonth &&
+                      "cursor-pointer hover:bg-primary/[0.05]"
                   )}
                 >
-                  {day.date.getDate()}
-                </span>
+                  <span
+                    className={cn(
+                      "inline-flex items-center justify-center h-6 w-6 rounded-full text-xs",
+                      day.isToday &&
+                        "bg-primary text-primary-foreground font-bold",
+                      !day.isCurrentMonth && "text-muted-foreground/50"
+                    )}
+                  >
+                    {day.date.getDate()}
+                  </span>
 
-                {/* Inspection dots */}
-                <div className="mt-0.5 space-y-0.5">
-                  {day.inspections.slice(0, 3).map((insp) => {
-                    const dt = new Date(insp.datetime);
-                    const isPast = dt < new Date();
-                    return (
-                      <Link
-                        key={insp.id}
-                        href={`/property/${insp.property_id}`}
-                        className={cn(
-                          "block truncate rounded px-1 py-0.5 text-[10px] font-medium leading-tight transition-colors",
-                          isPast
-                            ? "bg-muted text-muted-foreground"
-                            : "bg-primary/10 text-primary hover:bg-primary/20"
-                        )}
-                        title={`${insp.property.address}, ${insp.property.suburb} — ${dt.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" })}`}
-                      >
-                        {dt.toLocaleTimeString("en-AU", {
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })}{" "}
-                        {insp.property.suburb}
-                      </Link>
-                    );
-                  })}
-                  {day.inspections.length > 3 && (
-                    <span className="block text-[10px] text-muted-foreground px-1">
-                      +{day.inspections.length - 3} more
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
+                  <div className="mt-0.5 space-y-0.5">
+                    {day.inspections.slice(0, 3).map((insp) => {
+                      const dt = new Date(insp.datetime);
+                      const isPast = dt < new Date();
+                      return (
+                        <div
+                          key={insp.id}
+                          className={cn(
+                            "truncate rounded px-1 py-0.5 text-[10px] font-medium leading-tight",
+                            isPast
+                              ? "bg-muted text-muted-foreground"
+                              : "bg-primary/10 text-primary"
+                          )}
+                          title={`${insp.property.address}, ${insp.property.suburb} — ${dt.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" })}`}
+                        >
+                          {dt.toLocaleTimeString("en-AU", {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}{" "}
+                          {insp.property.suburb}
+                        </div>
+                      );
+                    })}
+                    {day.inspections.length > 3 && (
+                      <span className="block text-[10px] text-muted-foreground px-1">
+                        +{day.inspections.length - 3} more
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
+
+          {/* Legend */}
+          <p className="text-[11px] text-muted-foreground mt-2">
+            Click a day with inspections to see the itinerary with travel
+            times and clash detection
+          </p>
         </CardContent>
       </Card>
 
@@ -291,6 +376,13 @@ export function InspectionCalendar({
                 userId={userId}
                 partnerId={partnerId}
                 partnerName={partnerName}
+                onSelect={() => {
+                  const dt = new Date(insp.datetime);
+                  setCurrentMonth(
+                    new Date(dt.getFullYear(), dt.getMonth(), 1)
+                  );
+                  setSelectedDate(dt);
+                }}
               />
             ))
           )}
@@ -305,11 +397,13 @@ function UpcomingInspectionCard({
   userId,
   partnerId,
   partnerName,
+  onSelect,
 }: {
   inspection: InspectionWithProperty;
   userId: string;
   partnerId?: string | null;
   partnerName: string;
+  onSelect: () => void;
 }) {
   const dt = new Date(inspection.datetime);
   const isAttending = inspection.attendees.includes(userId);
@@ -322,11 +416,10 @@ function UpcomingInspectionCard({
   );
 
   return (
-    <Link
-      href={`/property/${inspection.property_id}`}
-      className="block rounded-xl border p-3 space-y-2 hover:border-primary/30 hover:bg-primary/[0.02] transition-all"
+    <button
+      onClick={onSelect}
+      className="block w-full text-left rounded-xl border p-3 space-y-2 hover:border-primary/30 hover:bg-primary/[0.02] transition-all"
     >
-      {/* Date row */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 flex-col items-center justify-center rounded-lg bg-primary/10 text-primary text-center">
@@ -360,12 +453,15 @@ function UpcomingInspectionCard({
                 : "text-primary bg-primary/10"
             )}
           >
-            {daysUntil === 0 ? "Today" : daysUntil === 1 ? "Tomorrow" : "2 days"}
+            {daysUntil === 0
+              ? "Today"
+              : daysUntil === 1
+                ? "Tomorrow"
+                : "2 days"}
           </span>
         )}
       </div>
 
-      {/* Property info */}
       <div className="flex items-start gap-1 text-xs text-muted-foreground">
         <MapPin className="h-3 w-3 shrink-0 mt-0.5" />
         <span className="line-clamp-1">
@@ -374,7 +470,6 @@ function UpcomingInspectionCard({
         </span>
       </div>
 
-      {/* Property features */}
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         {inspection.property.bedrooms != null && (
           <span className="flex items-center gap-0.5">
@@ -395,7 +490,6 @@ function UpcomingInspectionCard({
         )}
       </div>
 
-      {/* Attendance */}
       <div className="flex items-center gap-1.5">
         <span
           className={cn(
@@ -430,6 +524,6 @@ function UpcomingInspectionCard({
           </span>
         )}
       </div>
-    </Link>
+    </button>
   );
 }

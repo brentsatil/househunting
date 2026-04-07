@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Inspection, Property } from "@/types/property";
 
 export interface InspectionWithProperty extends Inspection {
-  property: Pick<Property, "id" | "address" | "suburb" | "state" | "images" | "property_type" | "bedrooms" | "bathrooms">;
+  property: Pick<Property, "id" | "address" | "suburb" | "state" | "images" | "property_type" | "bedrooms" | "bathrooms" | "lat" | "lng">;
 }
 
 /**
@@ -26,7 +26,7 @@ export function useInspections(partnershipId: string | null) {
     // First get all property IDs for this partnership
     const { data: properties } = await supabase
       .from("properties")
-      .select("id, address, suburb, state, images, property_type, bedrooms, bathrooms")
+      .select("id, address, suburb, state, images, property_type, bedrooms, bathrooms, lat, lng")
       .eq("partnership_id", partnershipId)
       .eq("is_active", true);
 

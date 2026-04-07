@@ -24,17 +24,19 @@ export async function POST(request: Request) {
         data: result.data,
         strategies: result.strategies,
       });
-    } else {
-      return NextResponse.json(
-        {
-          success: false,
-          error: result.error,
-          partial: result.partial,
-          needs_html: result.needs_html,
-        },
-        { status: result.partial ? 206 : 422 }
-      );
     }
+
+    // Extraction failed — return partial data if available
+    return NextResponse.json(
+      {
+        success: false,
+        error: result.error,
+        partial: result.partial,
+        needs_html: result.needs_html,
+      },
+      // 206 when we have partial data or can offer HTML paste
+      { status: result.partial || result.needs_html ? 206 : 422 }
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -43,10 +45,21 @@ export async function POST(request: Request) {
       );
     }
 
+    // Safety net: even on unexpected errors, try to return something useful
+    // so the client can offer HTML paste as a fallback
+    let url: string | undefined;
+    try {
+      const body = await request.clone().json();
+      url = body?.url;
+    } catch {
+      // Can't recover the URL
+    }
+
     return NextResponse.json(
       {
         success: false,
-        error: "An unexpected error occurred during extraction",
+        error: "An unexpected error occurred during extraction. Try pasting the page HTML instead.",
+        needs_html: !!url,
       },
       { status: 500 }
     );

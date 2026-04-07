@@ -45,6 +45,7 @@ export default function DashboardPage() {
     inspections: allInspections,
     upcoming: upcomingInspections,
     loading: inspectionsLoading,
+    refresh: refreshInspections,
   } = useInspections(partnership?.id ?? null);
   const [view, setView] = useState<ViewMode>("grid");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -300,6 +301,7 @@ export default function DashboardPage() {
             partnerName={partnerName ?? undefined}
             partnershipId={partnership.id}
             loading={inspectionsLoading}
+            onRefresh={refreshInspections}
           />
         ) : view === "map" ? (
           <PropertyMap

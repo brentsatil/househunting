@@ -4,25 +4,22 @@ import { generateICS } from "@/services/calendar";
 import type { CalendarEvent } from "@/services/calendar";
 
 /**
- * GET /api/calendar?partnershipId=xxx
+ * GET /api/calendar
  *
- * Generates an ICS calendar file containing all upcoming inspections
- * for a partnership. Can be subscribed to from Google Calendar, Apple
- * Calendar, or Outlook for live sync.
- *
- * GET /api/calendar?inspectionId=xxx
- *
- * Generates an ICS file for a single inspection (for "Add to Calendar" buttons).
+ * Params:
+ *   partnershipId - all inspections for a partnership
+ *   inspectionId  - single inspection
+ *   date          - filter to a specific date (YYYY-MM-DD), used with partnershipId
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const partnershipId = searchParams.get("partnershipId");
   const inspectionId = searchParams.get("inspectionId");
+  const dateFilter = searchParams.get("date"); // YYYY-MM-DD
 
   const supabase = await createClient();
 
   if (inspectionId) {
-    // Single inspection download
     const { data: inspection } = await supabase
       .from("inspections")
       .select("*, properties(address, suburb, state, postcode)")
@@ -53,7 +50,6 @@ export async function GET(request: Request) {
     };
 
     const ics = generateICS([event]);
-
     return new Response(ics, {
       headers: {
         "Content-Type": "text/calendar; charset=utf-8",
@@ -63,7 +59,6 @@ export async function GET(request: Request) {
   }
 
   if (partnershipId) {
-    // Full calendar for partnership
     const { data: properties } = await supabase
       .from("properties")
       .select("id, address, suburb, state, postcode")
@@ -84,11 +79,22 @@ export async function GET(request: Request) {
     const propertyIds = properties.map((p) => p.id);
     const propertyMap = new Map(properties.map((p) => [p.id, p]));
 
-    const { data: inspections } = await supabase
+    let query = supabase
       .from("inspections")
       .select("*")
       .in("property_id", propertyIds)
       .order("datetime", { ascending: true });
+
+    // Per-day filtering
+    if (dateFilter) {
+      const dayStart = new Date(`${dateFilter}T00:00:00`);
+      const dayEnd = new Date(`${dateFilter}T23:59:59`);
+      query = query
+        .gte("datetime", dayStart.toISOString())
+        .lte("datetime", dayEnd.toISOString());
+    }
+
+    const { data: inspections } = await query;
 
     const events: CalendarEvent[] = (inspections || []).map((i) => {
       const prop = propertyMap.get(i.property_id)!;
@@ -103,12 +109,14 @@ export async function GET(request: Request) {
     });
 
     const ics = generateICS(events);
+    const filename = dateFilter
+      ? `inspections-${dateFilter}.ics`
+      : "nesttogether-inspections.ics";
 
     return new Response(ics, {
       headers: {
         "Content-Type": "text/calendar; charset=utf-8",
-        "Content-Disposition":
-          'attachment; filename="nesttogether-inspections.ics"',
+        "Content-Disposition": `attachment; filename="${filename}"`,
       },
     });
   }

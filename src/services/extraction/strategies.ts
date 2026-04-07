@@ -142,6 +142,8 @@ async function googleCache(url: string): Promise<FetchResult> {
         return { ok: true, html, strategy: "google-cache" };
       }
     }
+  } catch {
+    // Abort, network error, or stream read failure — skip this strategy
   } finally {
     clearTimeout(timeout);
   }

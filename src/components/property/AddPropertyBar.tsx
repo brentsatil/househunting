@@ -42,11 +42,16 @@ export function AddPropertyBar({ onExtracted, disabled }: AddPropertyBarProps) {
         onExtracted(result.data);
         setUrl("");
       } else if (result.needs_html) {
-        // Rate-limited — offer HTML paste fallback
+        // Rate-limited or fetch failed — offer HTML paste fallback
         setPasteDialog({ url: inputUrl.trim(), partial: result.partial });
         setUrl("");
       } else if (result.partial) {
+        // Partial extraction — show preview with what we got
         onExtracted(result.partial);
+        setUrl("");
+      } else if (response.status >= 500) {
+        // Server error — offer HTML paste as fallback
+        setPasteDialog({ url: inputUrl.trim() });
         setUrl("");
       } else {
         setError(result.error || "Couldn't extract listing data");

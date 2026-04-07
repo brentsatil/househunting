@@ -177,8 +177,13 @@ export async function extractFromURL(url: string): Promise<ExtractionResult> {
   const source = detectSource(url);
   const strategies: string[] = [];
 
-  // --- Step 1: URL pattern extraction ---
-  const urlData = extractFromUrl(url, source);
+  // --- Step 1: URL pattern extraction (always succeeds) ---
+  let urlData: Partial<ExtractedProperty> = {};
+  try {
+    urlData = extractFromUrl(url, source);
+  } catch {
+    // URL parsing failed — continue with empty data
+  }
   strategies.push("url-parse");
 
   const baseData: ExtractedProperty = {
@@ -195,10 +200,23 @@ export async function extractFromURL(url: string): Promise<ExtractionResult> {
   }
 
   // --- Step 2: Multi-strategy fetch ---
-  const fetchResult = await fetchWithStrategies(url);
+  let fetchResult: Awaited<ReturnType<typeof fetchWithStrategies>>;
+  try {
+    fetchResult = await fetchWithStrategies(url);
+  } catch {
+    // All fetch strategies threw — treat as rate-limited
+    const partial = { ...baseData };
+    partial.missing_fields = ESSENTIAL_FIELDS.filter((f) => !partial[f]);
+    return {
+      success: false,
+      error: "Could not fetch listing. Paste the page HTML to extract data instead.",
+      partial,
+      needs_html: true,
+    };
+  }
 
   if (!fetchResult.ok) {
-    // All fetch strategies failed
+    // All fetch strategies failed gracefully
     const partial = { ...baseData };
     partial.missing_fields = ESSENTIAL_FIELDS.filter(
       (f) => !partial[f]
@@ -218,16 +236,23 @@ export async function extractFromURL(url: string): Promise<ExtractionResult> {
   strategies.push(fetchResult.strategy);
 
   // 3a: Structured data (JSON-LD + OG tags) — standardized, stable
-  const structured = extractStructuredData(html, url, source);
-  let merged = mergeExtracted(baseData, structured);
-  strategies.push("structured-data");
+  let merged = { ...baseData };
+  try {
+    const structured = extractStructuredData(html, url, source);
+    merged = mergeExtracted(baseData, structured);
+    strategies.push("structured-data");
+  } catch {
+    // Structured data parsing failed — continue
+  }
 
   // 3b: Source-specific selectors (CSS, data-testid, __NEXT_DATA__)
-  const sourceSpecific = parseSourceHtml(html, url, source, merged);
-  merged = mergeExtracted(sourceSpecific, merged);
-  // sourceSpecific is primary (it was passed `merged` as base), so use it
-  merged = sourceSpecific;
-  strategies.push(`${source}-parser`);
+  try {
+    const sourceSpecific = parseSourceHtml(html, url, source, merged);
+    merged = sourceSpecific;
+    strategies.push(`${source}-parser`);
+  } catch {
+    // Source-specific parsing failed — continue with structured data
+  }
 
   // --- Step 4: AI extraction if quality is low ---
   if (!hasMinimumQuality(merged) || qualityScore(merged) < 5) {
