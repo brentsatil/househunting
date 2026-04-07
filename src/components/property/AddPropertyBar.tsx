@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Link2, Image as ImageIcon, Loader2, Camera, X, Sparkles } from "lucide-react";
+import { Link2, Loader2, Camera, X, Sparkles, Upload } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { ExtractedProperty } from "@/types/property";
@@ -20,67 +20,33 @@ export function AddPropertyBar({ onExtracted, disabled }: AddPropertyBarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function extractFromUrl(inputUrl: string) {
-    setLoading(true);
-    setLoadingType("url");
-    setError(null);
-
+    setLoading(true); setLoadingType("url"); setError(null);
     try {
       const response = await fetch("/api/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: inputUrl.trim() }),
       });
-
       const result = await response.json();
-
-      if (result.success) {
-        onExtracted(result.data);
-        setUrl("");
-      } else if (result.partial) {
-        onExtracted(result.partial);
-        setUrl("");
-      } else {
-        setError(result.error || "Couldn't extract listing data");
-      }
-    } catch {
-      setError("Network error — please try again");
-    } finally {
-      setLoading(false);
-      setLoadingType(null);
-    }
+      if (result.success) { onExtracted(result.data); setUrl(""); }
+      else if (result.partial) { onExtracted(result.partial); setUrl(""); }
+      else { setError(result.error || "Couldn't extract listing data"); }
+    } catch { setError("Network error — please try again"); }
+    finally { setLoading(false); setLoadingType(null); }
   }
 
   async function extractFromImage(file: File) {
-    setLoading(true);
-    setLoadingType("image");
-    setError(null);
-
+    setLoading(true); setLoadingType("image"); setError(null);
     try {
-      const formData = new FormData();
-      formData.append("image", file);
-
-      const response = await fetch("/api/extract-image", {
-        method: "POST",
-        body: formData,
-      });
-
+      const formData = new FormData(); formData.append("image", file);
+      const response = await fetch("/api/extract-image", { method: "POST", body: formData });
       const result = await response.json();
-
-      if (result.success) {
-        onExtracted(result.data);
-      } else {
-        setError(result.error || "Couldn't read the screenshot");
-      }
-    } catch {
-      setError("Network error — please try again");
-    } finally {
-      setLoading(false);
-      setLoadingType(null);
-    }
+      if (result.success) { onExtracted(result.data); }
+      else { setError(result.error || "Couldn't read the screenshot"); }
+    } catch { setError("Network error — please try again"); }
+    finally { setLoading(false); setLoadingType(null); }
   }
 
   function handlePaste(e: React.ClipboardEvent) {
-    // Check for pasted images first
     const items = e.clipboardData?.items;
     if (items) {
       for (const item of Array.from(items)) {
@@ -92,24 +58,16 @@ export function AddPropertyBar({ onExtracted, disabled }: AddPropertyBarProps) {
         }
       }
     }
-
-    // Otherwise handle as URL text
     const text = e.clipboardData.getData("text");
     if (text && text.startsWith("http")) {
-      e.preventDefault();
-      setUrl(text);
-      extractFromUrl(text);
+      e.preventDefault(); setUrl(text); extractFromUrl(text);
     }
   }
 
   function handleDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setDragActive(false);
-
+    e.preventDefault(); setDragActive(false);
     const files = e.dataTransfer?.files;
-    if (files?.[0] && files[0].type.startsWith("image/")) {
-      extractFromImage(files[0]);
-    }
+    if (files?.[0] && files[0].type.startsWith("image/")) extractFromImage(files[0]);
   }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -120,30 +78,27 @@ export function AddPropertyBar({ onExtracted, disabled }: AddPropertyBarProps) {
 
   return (
     <div
-      className={`relative rounded-2xl border-2 transition-all ${
+      className={`relative rounded-2xl transition-all duration-200 ${
         dragActive
-          ? "border-primary bg-primary/5 border-dashed"
+          ? "border-2 border-dashed border-primary bg-primary/5 shadow-lg shadow-primary/10"
           : error
-            ? "border-destructive/30 bg-destructive/5"
-            : "border-muted bg-card"
+            ? "border-2 border-destructive/20 bg-destructive/5"
+            : "border-2 border-border bg-card shadow-sm hover:shadow-md"
       }`}
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragActive(true);
-      }}
+      onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
       onDragLeave={() => setDragActive(false)}
       onDrop={handleDrop}
     >
-      <div className="p-4 sm:p-5">
+      <div className="p-5 sm:p-6">
         {/* Loading overlay */}
         {loading && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-background/80 backdrop-blur-sm">
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="text-sm font-medium">
-                {loadingType === "image"
-                  ? "Reading screenshot with AI..."
-                  : "Extracting listing data..."}
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-card/90 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative">
+                <div className="h-12 w-12 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+              </div>
+              <span className="text-sm font-medium text-foreground">
+                {loadingType === "image" ? "Reading screenshot with AI..." : "Extracting listing data..."}
               </span>
             </div>
           </div>
@@ -152,36 +107,31 @@ export function AddPropertyBar({ onExtracted, disabled }: AddPropertyBarProps) {
         {/* Drag overlay */}
         {dragActive && (
           <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl">
-            <div className="flex flex-col items-center gap-2 text-primary">
-              <ImageIcon className="h-10 w-10" />
-              <span className="text-sm font-medium">Drop screenshot here</span>
+            <div className="flex flex-col items-center gap-3 text-primary">
+              <Upload className="h-12 w-12" />
+              <span className="text-base font-semibold">Drop screenshot here</span>
             </div>
           </div>
         )}
 
-        {/* Main input */}
-        <div className="flex gap-2">
+        {/* Main input row */}
+        <div className="flex gap-3">
           <div className="relative flex-1">
-            <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Link2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               placeholder="Paste a listing URL or screenshot..."
               value={url}
-              onChange={(e) => {
-                setUrl(e.target.value);
-                setError(null);
-              }}
+              onChange={(e) => { setUrl(e.target.value); setError(null); }}
               onPaste={handlePaste}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && url.trim()) extractFromUrl(url);
-              }}
-              className="pl-9 h-11 rounded-xl border-0 bg-muted/50 text-base"
+              onKeyDown={(e) => { if (e.key === "Enter" && url.trim()) extractFromUrl(url); }}
+              className="pl-11 h-12 rounded-xl border-border bg-background text-base"
               disabled={loading || disabled}
             />
           </div>
           <Button
             size="icon"
-            variant="outline"
-            className="h-11 w-11 rounded-xl shrink-0"
+            variant="secondary"
+            className="h-12 w-12 rounded-xl shrink-0 shadow-sm"
             onClick={() => fileInputRef.current?.click()}
             disabled={loading || disabled}
             title="Upload screenshot"
@@ -189,18 +139,14 @@ export function AddPropertyBar({ onExtracted, disabled }: AddPropertyBarProps) {
             <Camera className="h-5 w-5" />
           </Button>
           <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handleFileSelect}
+            ref={fileInputRef} type="file" accept="image/*" capture="environment"
+            className="hidden" onChange={handleFileSelect}
           />
         </div>
 
         {/* Error */}
         {error && (
-          <div className="mt-3 flex items-start gap-2 text-sm">
+          <div className="mt-3 flex items-start gap-2 text-sm bg-destructive/10 rounded-xl px-4 py-2.5">
             <X className="h-4 w-4 shrink-0 mt-0.5 text-destructive" />
             <span className="text-destructive">{error}</span>
           </div>
@@ -208,11 +154,9 @@ export function AddPropertyBar({ onExtracted, disabled }: AddPropertyBarProps) {
 
         {/* Hints */}
         {!loading && !error && (
-          <div className="mt-2.5 flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Sparkles className="h-3 w-3" />
-              Domain, REA, Facebook — or paste a screenshot
-            </span>
+          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+            <Sparkles className="h-3.5 w-3.5 text-primary/60" />
+            <span>Supports <strong>Domain.com.au</strong>, <strong>realestate.com.au</strong>, <strong>Facebook Marketplace</strong> — or paste/drop a screenshot</span>
           </div>
         )}
       </div>

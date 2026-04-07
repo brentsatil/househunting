@@ -1,18 +1,32 @@
 import * as cheerio from "cheerio";
 import type { ExtractedProperty, AustralianState } from "@/types/property";
 
-export async function extractFromREA(url: string): Promise<ExtractedProperty> {
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    },
-  });
+async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
+  const headers = {
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-AU,en;q=0.9",
+  };
 
-  if (!response.ok) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const response = await fetch(url, { headers });
+    if (response.ok) return response;
+    if (response.status === 429 && attempt < retries) {
+      // Exponential backoff: 2s, 4s
+      await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+      continue;
+    }
+    if (response.status === 429) {
+      throw new Error("REA is rate-limiting requests. Try again in a moment, or the listing will be partially extracted.");
+    }
     throw new Error(`Failed to fetch REA listing: ${response.status}`);
   }
+  throw new Error("Failed to fetch REA listing after retries");
+}
+
+export async function extractFromREA(url: string): Promise<ExtractedProperty> {
+  const response = await fetchWithRetry(url);
 
   const html = await response.text();
   const $ = cheerio.load(html);

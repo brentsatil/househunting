@@ -1,5 +1,6 @@
 "use client";
 
+import { Key, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SearchMode } from "@/types/property";
 
@@ -10,27 +11,29 @@ interface ModeSelectorProps {
 
 export function ModeSelector({ mode, onChange }: ModeSelectorProps) {
   return (
-    <div className="flex items-center rounded-lg bg-muted p-1">
+    <div className="flex items-center rounded-xl bg-secondary p-1 shadow-inner">
       <button
         onClick={() => onChange("rent")}
         className={cn(
-          "rounded-md px-3 py-1 text-sm font-medium transition-all",
+          "flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all duration-200",
           mode === "rent"
-            ? "bg-background text-foreground shadow-sm"
+            ? "bg-white text-primary shadow-sm"
             : "text-muted-foreground hover:text-foreground"
         )}
       >
+        <Key className="h-3.5 w-3.5" />
         Renting
       </button>
       <button
         onClick={() => onChange("buy")}
         className={cn(
-          "rounded-md px-3 py-1 text-sm font-medium transition-all",
+          "flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all duration-200",
           mode === "buy"
-            ? "bg-background text-foreground shadow-sm"
+            ? "bg-white text-primary shadow-sm"
             : "text-muted-foreground hover:text-foreground"
         )}
       >
+        <Building2 className="h-3.5 w-3.5" />
         Buying
       </button>
     </div>

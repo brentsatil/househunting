@@ -18,15 +18,15 @@ export function ViewToggle({ view, onChange }: ViewToggleProps) {
   ];
 
   return (
-    <div className="flex items-center rounded-lg border p-1">
+    <div className="flex items-center rounded-xl bg-secondary p-1 shadow-inner">
       {views.map(({ value, icon, label }) => (
         <button
           key={value}
           onClick={() => onChange(value)}
           className={cn(
-            "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm transition-all",
+            "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200",
             view === value
-              ? "bg-primary text-primary-foreground"
+              ? "bg-white text-primary shadow-sm"
               : "text-muted-foreground hover:text-foreground"
           )}
           title={label}
