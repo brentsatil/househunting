@@ -7,6 +7,7 @@ import { Header } from "@/components/layout/Header";
 import { ViewToggle, type ViewMode } from "@/components/layout/ViewToggle";
 import { AddPropertyBar } from "@/components/property/AddPropertyBar";
 import { ExtractionPreview } from "@/components/property/ExtractionPreview";
+import { HtmlPasteDialog } from "@/components/property/HtmlPasteDialog";
 import { PropertyList } from "@/components/property/PropertyList";
 import { PropertyMap } from "@/components/property/PropertyMap";
 import { InspectionCalendar } from "@/components/coordination/InspectionCalendar";
@@ -52,6 +53,7 @@ export default function DashboardPage() {
   const [pendingExtraction, setPendingExtraction] =
     useState<ExtractedProperty | null>(null);
   const [saving, setSaving] = useState(false);
+  const [enrichDialog, setEnrichDialog] = useState(false);
 
   const partnerId =
     partnership && userId
@@ -250,13 +252,32 @@ export default function DashboardPage() {
 
         {/* Extraction preview */}
         {pendingExtraction && (
-          <ExtractionPreview
-            data={pendingExtraction}
-            mode={mode}
-            onConfirm={handleConfirm}
-            onDiscard={() => setPendingExtraction(null)}
-            saving={saving}
-          />
+          <>
+            <ExtractionPreview
+              data={pendingExtraction}
+              mode={mode}
+              onConfirm={handleConfirm}
+              onDiscard={() => setPendingExtraction(null)}
+              onEnrichWithHtml={
+                pendingExtraction.source_url
+                  ? () => setEnrichDialog(true)
+                  : undefined
+              }
+              saving={saving}
+            />
+            {enrichDialog && pendingExtraction.source_url && (
+              <HtmlPasteDialog
+                open
+                onClose={() => setEnrichDialog(false)}
+                url={pendingExtraction.source_url}
+                partialData={pendingExtraction}
+                onExtracted={(enriched) => {
+                  setPendingExtraction(enriched);
+                  setEnrichDialog(false);
+                }}
+              />
+            )}
+          </>
         )}
 
         {/* Properties header */}

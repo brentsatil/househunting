@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   Calendar,
   Clock,
+  Code2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ interface ExtractionPreviewProps {
   mode: SearchMode;
   onConfirm: (data: ExtractedProperty) => void;
   onDiscard: () => void;
+  onEnrichWithHtml?: () => void;
   saving?: boolean;
 }
 
@@ -42,6 +44,7 @@ export function ExtractionPreview({
   mode,
   onConfirm,
   onDiscard,
+  onEnrichWithHtml,
   saving,
 }: ExtractionPreviewProps) {
   const [editMode, setEditMode] = useState(false);
@@ -62,6 +65,16 @@ export function ExtractionPreview({
 
   const hasInspections =
     edited.inspection_times && edited.inspection_times.length > 0;
+
+  // Detect thin data — extraction got address but not much else
+  const isThinData =
+    !edited.bedrooms &&
+    !edited.bathrooms &&
+    !edited.rent_weekly &&
+    !edited.sale_price &&
+    !edited.price_guide &&
+    !edited.description &&
+    (!edited.images || edited.images.length === 0);
 
   function updateField(field: string, value: string | number | undefined) {
     setEdited((prev) => ({ ...prev, [field]: value }));
@@ -353,6 +366,29 @@ export function ExtractionPreview({
               </Button>
             </div>
           </div>
+
+          {/* Thin data warning — offer HTML paste to get more */}
+          {isThinData && onEnrichWithHtml && (
+            <button
+              onClick={onEnrichWithHtml}
+              className="w-full rounded-xl bg-amber-50 border border-amber-200 p-3 text-left hover:bg-amber-100/70 transition-colors group"
+            >
+              <div className="flex items-center gap-2">
+                <Code2 className="h-4 w-4 text-amber-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-amber-800">
+                    Limited data extracted — get full listing details
+                  </p>
+                  <p className="text-[11px] text-amber-600/80 mt-0.5">
+                    Paste the page source to get images, price, bedrooms, description & more
+                  </p>
+                </div>
+                <span className="text-xs font-medium text-amber-700 group-hover:underline shrink-0">
+                  Paste HTML
+                </span>
+              </div>
+            </button>
+          )}
 
           {/* Extracted inspection times */}
           {hasInspections && (
