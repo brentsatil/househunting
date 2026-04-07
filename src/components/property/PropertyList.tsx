@@ -2,6 +2,7 @@
 
 import { PropertyCard } from "./PropertyCard";
 import type { Property, PropertyInteraction, SearchMode } from "@/types/property";
+import { Home } from "lucide-react";
 
 interface PropertyListProps {
   properties: Property[];
@@ -9,28 +10,20 @@ interface PropertyListProps {
   mode: SearchMode;
 }
 
-export function PropertyList({ properties, interactions, mode }: PropertyListProps) {
+export function PropertyList({
+  properties,
+  interactions,
+  mode,
+}: PropertyListProps) {
   if (properties.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="rounded-full bg-muted p-4 mb-4">
-          <svg
-            className="h-8 w-8 text-muted-foreground"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-            />
-          </svg>
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="rounded-2xl bg-muted/50 p-5 mb-4">
+          <Home className="h-10 w-10 text-muted-foreground/40" />
         </div>
         <h3 className="text-lg font-semibold">No properties yet</h3>
-        <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-          Paste a listing URL above to get started, or add a property manually.
+        <p className="text-sm text-muted-foreground mt-1.5 max-w-xs">
+          Paste a listing URL or drop a screenshot above — the property will appear here instantly for both of you.
         </p>
       </div>
     );
