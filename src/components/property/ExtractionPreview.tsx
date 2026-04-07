@@ -15,6 +15,13 @@ import {
   Calendar,
   Clock,
   Code2,
+  ExternalLink,
+  Building2,
+  FileText,
+  User,
+  DollarSign,
+  PawPrint,
+  Key,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -299,7 +306,15 @@ export function ExtractionPreview({
 
             {/* Info */}
             <div className="flex-1 min-w-0 space-y-1.5">
-              {price && <p className="text-lg font-bold">{price}</p>}
+              <div className="flex items-center gap-2">
+                {price && <p className="text-lg font-bold">{price}</p>}
+                {edited.property_type && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
+                    <Building2 className="h-3 w-3" />
+                    {edited.property_type}
+                  </span>
+                )}
+              </div>
 
               <div className="flex items-start gap-1 text-sm text-muted-foreground">
                 <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
@@ -365,8 +380,78 @@ export function ExtractionPreview({
                 )}
                 {saving ? "Saving" : "Add"}
               </Button>
+              {edited.source_url && (
+                <a
+                  href={edited.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-1 rounded-md border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  View listing
+                </a>
+              )}
             </div>
           </div>
+
+          {/* Additional extracted details */}
+          {!isThinData && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground border-t border-border/50 pt-2.5">
+              {mode === "rent" && edited.bond != null && (
+                <span className="flex items-center gap-1">
+                  <DollarSign className="h-3 w-3" />
+                  Bond {formatAUD(edited.bond)}
+                </span>
+              )}
+              {mode === "rent" && edited.available_date && (
+                <span className="flex items-center gap-1">
+                  <Key className="h-3 w-3" />
+                  Available {edited.available_date}
+                </span>
+              )}
+              {mode === "rent" && edited.lease_length && (
+                <span className="flex items-center gap-1">
+                  <FileText className="h-3 w-3" />
+                  {edited.lease_length}
+                </span>
+              )}
+              {mode === "rent" && edited.pet_policy && (
+                <span className="flex items-center gap-1">
+                  <PawPrint className="h-3 w-3" />
+                  Pets {edited.pet_policy.replace("_", " ")}
+                </span>
+              )}
+              {mode === "buy" && edited.price_guide && !edited.sale_price && (
+                <span className="flex items-center gap-1">
+                  <DollarSign className="h-3 w-3" />
+                  {edited.price_guide}
+                </span>
+              )}
+              {mode === "buy" && edited.auction_date && (
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  Auction {edited.auction_date}
+                </span>
+              )}
+              {edited.land_size_sqm != null && (
+                <span>{edited.land_size_sqm}m² land</span>
+              )}
+              {edited.agent_name && (
+                <span className="flex items-center gap-1">
+                  <User className="h-3 w-3" />
+                  {edited.agent_name}
+                  {edited.agent_agency ? ` — ${edited.agent_agency}` : ""}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Description snippet */}
+          {edited.description && (
+            <p className="text-xs text-muted-foreground line-clamp-2 border-t border-border/50 pt-2.5">
+              {edited.description}
+            </p>
+          )}
 
           {/* Thin data warning — offer HTML paste to get more */}
           {isThinData && onEnrichWithHtml && (
