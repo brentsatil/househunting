@@ -36,7 +36,7 @@ export function PropertyCard({ property, interactions = [], mode }: PropertyCard
         <div className="relative aspect-[3/2] overflow-hidden bg-muted">
           {leadImage ? (
             <Image
-              src={leadImage} alt={property.address} fill
+              src={leadImage} alt={property.address} fill unoptimized
               className="object-cover transition-transform duration-500 group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
             />

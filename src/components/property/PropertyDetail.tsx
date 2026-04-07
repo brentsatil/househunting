@@ -54,6 +54,7 @@ export function PropertyDetail({
             src={images[currentImage]}
             alt={`${property.address} - Photo ${currentImage + 1}`}
             fill
+            unoptimized
             className="object-cover"
             sizes="(max-width: 768px) 100vw, 80vw"
             priority
@@ -91,7 +92,7 @@ export function PropertyDetail({
                 i === currentImage ? "ring-2 ring-primary" : "opacity-70 hover:opacity-100"
               }`}
             >
-              <Image src={img} alt="" fill className="object-cover" sizes="96px" />
+              <Image src={img} alt="" fill unoptimized className="object-cover" sizes="96px" />
             </button>
           ))}
         </div>

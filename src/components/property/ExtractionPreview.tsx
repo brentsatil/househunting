@@ -285,6 +285,7 @@ export function ExtractionPreview({
                   src={leadImage}
                   alt=""
                   fill
+                  unoptimized
                   className="object-cover"
                   sizes="128px"
                 />
